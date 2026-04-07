@@ -198,15 +198,32 @@ if err != nil {
     // >>> For Show Success Dialogue From Response Golang ======================
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text("Upload Complete"),
-        content: Text("Total products inserted: $totalInserted"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text("OK"),
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+        child: Container(
+          padding: EdgeInsets.all(20.w),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20.r),),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.check_circle_outline, color: AppColors.primaryColor, size: 60.sp),
+              SizedBox(height: 15.h),
+              Text("Bulk Upload Success!", style: TextStyle(color: AppColors.primaryColor, fontSize: 20.sp, fontWeight: FontWeight.bold),),
+              SizedBox(height: 10.h),
+              Text("$totalInserted products have been successfully uploaded.", style: TextStyle(color: AppColors.primaryColor.withValues(alpha: 0.9), fontSize: 14.sp), textAlign: TextAlign.center,),
+              SizedBox(height: 20.h),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: AppColors.primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),),
+                onPressed: () {
+                  setState(() {selectedFile = null;parseProductListData = [];});
+                  Navigator.of(context).pop();
+                },
+                child: Padding(padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h), child: Text("OK", style: TextStyle(fontWeight: FontWeight.bold)),),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
     // <<< For Show Success Dialogue From Response Golang ======================
