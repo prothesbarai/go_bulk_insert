@@ -100,7 +100,7 @@ if err != nil {
   File? selectedFile;
   List<Map<String,dynamic>> parseProductListData = [];
   bool isLoading = false;
-  static const int maxProducts = 50000;
+  static const int maxProducts = 100000;
 
   /// >>> Pick CSV file ========================================================
   Future<void> pickCSVFile() async{
@@ -179,29 +179,62 @@ if err != nil {
     if (parseProductListData.isEmpty) return;
     setState(() {isLoading = true;});
     const int chunkSize = 500;
+    // >>> For Show Success Dialogue From Response Golang ======================
+    int totalInserted = 0;
+    // <<< For Show Success Dialogue From Response Golang ======================
     for(int i=0; i<parseProductListData.length; i+=chunkSize){
       final chunk = parseProductListData.sublist(i, i + chunkSize > parseProductListData.length ? parseProductListData.length : i+chunkSize);
-      await sendChunk(chunk); // >>> API Call Here
+      // await sendChunk(chunk); // >>> API Call Here
+
+      // >>> For Show Success Dialogue From Response Golang ====================
+      final response = await sendChunk(chunk); // >>> API Call Here
+      if (response != null) {
+        totalInserted += (response['inserted'] as num).toInt();
+      }
+      // <<< For Show Success Dialogue From Response Golang ====================
     }
     setState(() {isLoading = false;});
     if(!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("All products uploaded successfully")),);
+    // >>> For Show Success Dialogue From Response Golang ======================
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Upload Complete"),
+        content: Text("Total products inserted: $totalInserted"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text("OK"),
+          ),
+        ],
+      ),
+    );
+    // <<< For Show Success Dialogue From Response Golang ======================
   }
-  Future<void> sendChunk(List<Map<String,dynamic>> chunk) async{
+  Future<Map<String, dynamic>?> sendChunk(List<Map<String,dynamic>> chunk) async{
     try{
       final request = await HttpClient().postUrl(Uri.parse("http://192.168.100.16:8080/products/bulk"));
       request.headers.set("Content-Type", "application/json");
       request.write(jsonEncode({"products": chunk,}));
       final response = await request.close();
+
+      // >>> Show UI From Go Success Response ==================================
+      final responseBody = await response.transform(utf8.decoder).join();
+      final Map<String, dynamic> res = jsonDecode(responseBody);
+      // <<< Show UI From Go Success Response ==================================
+
       if (response.statusCode != 200) {
         throw Exception("Failed to upload chunk");
       }
+      return res;
     }catch(e){
       debugPrint("Chunk upload error: $e");
+      return null;
     }
   }
   /// <<< Upload Product With Chunks ===========================================
 ```
+
 - Button onpress call & Pick File in Scaffold Widget
 ```dart
 GestureDetector(
