@@ -97,7 +97,7 @@ if err != nil {
 - bulk_insert_screen.dart (page code)
 
 ```dart
-  File? selectedFile;
+    File? selectedFile;
   List<Map<String,dynamic>> parseProductListData = [];
   bool isLoading = false;
   static const int maxProducts = 100000;
@@ -128,7 +128,37 @@ if err != nil {
         for(int i = 1; i < fields.length && parseProductListData.length < maxProducts; i++){
           parseProductListData.add({
             "name": fields[i][0].toString(),
-            "price": double.tryParse(fields[i][1].toString()) ?? 0.0,
+            "store_id": int.tryParse(fields[i][1].toString()) ?? 0,
+            "store_code": fields[i][2].toString(),
+            "category_id": fields[i][3].toString(),
+            "subcategory_id": fields[i][4].toString(),
+            "sub_subcategory_id": fields[i][5].toString(),
+            "photos": fields[i][6].toString(),
+            "thumbnail": fields[i][7].toString(),
+            "featured_img": fields[i][8].toString(),
+            "video_link": fields[i][9].toString(),
+            "tags": fields[i][10].toString(),
+            "description": fields[i][11].toString(),
+            "price": double.tryParse(fields[i][12].toString()) ?? 0.0,
+            "purchase_price": double.tryParse(fields[i][13].toString()) ?? 0.0,
+            "discount": double.tryParse(fields[i][14].toString()) ?? 0.0,
+            "discount_type": fields[i][15].toString(),
+            "discounted_price": double.tryParse(fields[i][16].toString()) ?? 0.0,
+            "sku": fields[i][17].toString(),
+            "unit": fields[i][18].toString(),
+            "weight": double.tryParse(fields[i][19].toString()) ?? 0.0,
+            "variant_product": int.tryParse(fields[i][20].toString()) ?? 0,
+            "attributes": fields[i][21].toString(),
+            "choice_options": fields[i][22].toString(),
+            "colors": fields[i][23].toString(),
+            "variations": fields[i][24].toString(),
+            "published": int.tryParse(fields[i][25].toString()) ?? 0,
+            "trashed": int.tryParse(fields[i][26].toString()) ?? 0,
+            "stock_in": int.tryParse(fields[i][27].toString()) ?? 0,
+            "featured": int.tryParse(fields[i][28].toString()) ?? 0,
+            "created_by": int.tryParse(fields[i][29].toString()) ?? 1,
+            "created_at": fields[i][30].toString(),
+            "updated_at": fields[i][31].toString(),
           });
         }
         // >>> Limit Alert ui
@@ -155,18 +185,57 @@ if err != nil {
     SendPort sendPort = args[0];
     String path = args[1];
     File file = File(path);
+
     String content = await file.readAsString();
-    List<dynamic> jsonData = jsonDecode(content);
+    final decoded = jsonDecode(content);
+    List<dynamic> jsonData;
+    // >>> Check if the decoded JSON is a Map with a "products" key
+    if (decoded is Map<String, dynamic> && decoded['products'] is List) {
+      jsonData = decoded['products'];
+    } else if (decoded is List) {
+      jsonData = decoded;
+    } else {
+      // Invalid format
+      sendPort.send([]);
+      return;
+    }
     List<Map<String,dynamic>> result = [];
 
     for(var item in jsonData){
       if(result.length >= maxProducts) break; //>>> limit enforce
       result.add({
-        "name": item['name'].toString(),
+        "name": item['name']?.toString() ?? "",
+        "store_id": int.tryParse(item['store_id'].toString()) ?? 0,
+        "store_code": item['store_code']?.toString() ?? "",
+        "category_id": item['category_id']?.toString() ?? "",
+        "subcategory_id": item['subcategory_id']?.toString() ?? "",
+        "sub_subcategory_id": item['sub_subcategory_id']?.toString() ?? "",
+        "photos": item['photos']?.toString() ?? "",
+        "thumbnail": item['thumbnail']?.toString() ?? "",
+        "featured_img": item['featured_img']?.toString() ?? "",
+        "video_link": item['video_link']?.toString() ?? "",
+        "tags": item['tags']?.toString() ?? "",
+        "description": item['description']?.toString() ?? "",
         "price": double.tryParse(item['price'].toString()) ?? 0.0,
-        // "col3": item['col3'].toString(),
-        // ...............................
-        // "col10": item['col10'].toString()
+        "purchase_price": double.tryParse(item['purchase_price'].toString()) ?? 0.0,
+        "discount": double.tryParse(item['discount'].toString()) ?? 0.0,
+        "discount_type": item['discount_type']?.toString() ?? "",
+        "discounted_price": double.tryParse(item['discounted_price'].toString()) ?? 0.0,
+        "sku": item['sku']?.toString() ?? "",
+        "unit": item['unit']?.toString() ?? "",
+        "weight": double.tryParse(item['weight'].toString()) ?? 0.0,
+        "variant_product": int.tryParse(item['variant_product'].toString()) ?? 0,
+        "attributes": item['attributes']?.toString() ?? "",
+        "choice_options": item['choice_options']?.toString() ?? "",
+        "colors": item['colors']?.toString() ?? "",
+        "variations": item['variations']?.toString() ?? "",
+        "published": int.tryParse(item['published'].toString()) ?? 0,
+        "trashed": int.tryParse(item['trashed'].toString()) ?? 0,
+        "stock_in": int.tryParse(item['stock_in'].toString()) ?? 0,
+        "featured": int.tryParse(item['featured'].toString()) ?? 0,
+        "created_by": int.tryParse(item['created_by']?.toString() ?? "1") ?? 1,
+        "created_at": item['created_at']?.toString() ?? DateTime.now().toIso8601String(),
+        "updated_at": item['updated_at']?.toString() ?? DateTime.now().toIso8601String(),
       });
     }
     sendPort.send(result);
@@ -190,6 +259,11 @@ if err != nil {
       final response = await sendChunk(chunk); // >>> API Call Here
       if (response != null) {
         totalInserted += (response['inserted'] as num).toInt();
+      }else{
+        if(!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Chunk upload failed!")));
+        setState(() { isLoading = false; });
+        return;
       }
       // <<< For Show Success Dialogue From Response Golang ====================
     }
