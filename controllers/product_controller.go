@@ -13,6 +13,7 @@ import (
 var batchSize = 500
 
 func BulkInsertProducts(ginCtx *gin.Context) {
+
 	var reqBulkPM models.BulkProductRequest
 
 	/// >>>  JSON Binding
@@ -28,6 +29,7 @@ func BulkInsertProducts(ginCtx *gin.Context) {
 		logger.AppLogger.Error.Println("Empty Product List")
 		return
 	}
+
 
 	/// >>> Extra Safety Check
 	if len(reqBulkPM.Products) > 1000 {
@@ -89,7 +91,7 @@ func insertBatch(tx *sql.Tx, products []models.ProductModel) error {
 	query := "INSERT INTO products (name, store_id, store_code, category_id, subcategory_id, sub_subcategory_id, photos, thumbnail, featured_img, video_link, tags, description, price, purchase_price, discount, discount_type, discounted_price,sku, unit, weight, variant_product, attributes, choice_options, colors, variations, published, trashed, stock_in, featured, created_by, created_at, updated_at) VALUES "
 
 	palceholder := make([]string, 0, len(products))
-	values := make([]interface{}, 0, len(products)*2)
+	values := make([]interface{}, 0, len(products)*32) // >>> Here 32 Means : There are 32 fields per product.
 
 	for _, p := range products {
 		// >>> Basic validation (safe)
@@ -97,41 +99,23 @@ func insertBatch(tx *sql.Tx, products []models.ProductModel) error {
 			p.Name = "Unnamed"
 		}
 		palceholder = append(palceholder, "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
-		values = append(values, p.Name)
-		values = append(values, p.StoreId)
-		values = append(values, p.StoreCode)
-		values = append(values, p.CategoryId)
-		values = append(values, p.SubCategoryId)
-		values = append(values, p.SubSubCategoryId)
-		values = append(values, p.Photos)
-		values = append(values, p.Thumbnail)
-		values = append(values, p.FeaturedImg)
-		values = append(values, p.VideoLink)
-		values = append(values, p.Tags)
-		values = append(values, p.Description)
-		values = append(values, p.Price)
-		values = append(values, p.PurchasePrice)
-		values = append(values, p.Discount)
-		values = append(values, string(p.DiscountType))
-		values = append(values, p.DiscountedPrice)
-		values = append(values, p.Sku)
-		values = append(values, p.Unit)
-		values = append(values, p.Weight)
-		values = append(values, p.VariantProduct)
-		values = append(values, p.Attributes)
-		values = append(values, p.ChoiceOptions)
-		values = append(values, p.Colors)
-		values = append(values, p.Variations)
-		values = append(values, p.Published)
-		values = append(values, p.Trashed)
-		values = append(values, p.StockIn)
-		values = append(values, p.Featured)
-		values = append(values, p.CreatedBy)
-		values = append(values, p.CreatedAt)
-		values = append(values, p.UpdatedAt)
+		values = append(values, p.Name, p.StoreId, p.StoreCode,p.CategoryId, p.SubCategoryId, p.SubSubCategoryId, p.Photos, p.Thumbnail, p.FeaturedImg, p.VideoLink, p.Tags, p.Description, p.Price, p.PurchasePrice, p.Discount, string(p.DiscountType), p.DiscountedPrice, p.Sku, p.Unit, p.Weight, p.VariantProduct, p.Attributes, p.ChoiceOptions, p.Colors, p.Variations, p.Published, p.Trashed, p.StockIn, p.Featured, p.CreatedBy, p.CreatedAt, p.UpdatedAt,)
 	}
 
 	query += strings.Join(palceholder, ",")
+
+	// >>> For Duplicate Product Check But Unique BY SKU IN DB
+	query += `
+	ON DUPLICATE KEY UPDATE
+		name = VALUES(name),
+		price = VALUES(price),
+		purchase_price = VALUES(purchase_price),
+		discount = VALUES(discount),
+		discounted_price = VALUES(discounted_price),
+		stock_in = VALUES(stock_in),
+		updated_at = VALUES(updated_at)
+	`
+
 	_, err := tx.Exec(query, values...)
 	return err
 }
